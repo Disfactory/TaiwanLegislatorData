@@ -1,0 +1,13 @@
+{
+  "name": "taiwan-legislator-data",
+  "version": "1.0.0",
+  "description": "臺灣立法委員開放資料",
+  "repository": "git@github.com:Disfactory/TaiwanLegislatorData.git",
+  "author": "yoyo930021 <yoyo930021@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^3.7.2",
+    "cheerio": "^1.0.0-rc.3",
+    "node-fetch": "^2.6.0"
+  }
+}
