@@ -34,8 +34,8 @@ async function fetchAndParseLegislator (url) {
   const { $ } = await fetchTextAndParser(url)
   const name = $('.legislatorname').text().trim()
   const image = combineURLs(baseUrl, $('img[src^="/Images/Legislators/"]').attr('src'))
-  const info = $('.info-left').children().children('li').map((i, el) => $(el).text().trim()).toArray().map((el) => el.split('：')).reduce((sum, el) => ({ ...sum, [el[0]]: el[1] }), {})
-  
+  const info = $('.info-left').children().children('li').map((i, el) => $(el).text().trim()).toArray().map((el) => el.split('：')).reduce((sum, el) => ({ ...sum, [el[0]]: el.slice(1).join('：') }), {})
+
   let key = ''
   const histories = $('.info-right')
     .children()
@@ -43,7 +43,7 @@ async function fetchAndParseLegislator (url) {
       if (element.tagName === 'h4') {
         key = $(element).text().trim()
       } else if (element.tagName === 'ul') {
-        if ($(element).text().includes('：')) return { [key]: $(element).children().map((i, el) => $(el).text()).toArray().map((el) => el.split('：')).reduce((sum, el) => ({ ...sum, [el[0]]: el[1] }), {}) }
+        if ($(element).children().map((i, el) => $(el).text()).toArray().every((el) => el.includes('：'))) return { [key]: $(element).children().map((i, el) => $(el).text()).toArray().map((el) => el.split('：')).reduce((sum, el) => ({ ...sum, [el[0]]: el.slice(1).join('：') }), {}) }
         return { [key]: $(element).children().map((i, el) => $(el).text()).toArray() }
       }
       return null

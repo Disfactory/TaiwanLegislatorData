@@ -5,6 +5,9 @@
   "repository": "git@github.com:Disfactory/TaiwanLegislatorData.git",
   "author": "yoyo930021 <yoyo930021@gmail.com>",
   "license": "MIT",
+  "scripts": {
+    "fetch": "node index.js"
+  },
   "dependencies": {
     "bluebird": "^3.7.2",
     "cheerio": "^1.0.0-rc.3",
