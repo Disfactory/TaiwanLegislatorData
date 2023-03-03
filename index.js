@@ -9,12 +9,19 @@ const baseUrl = 'https://www.ly.gov.tw/'
 const nowLegislatorSelectorAtHome = 'a[title="本屆立委"]'
 const legislatorSelectorAtList = '.legislatorname'
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 const combineURLs = (baseUrl, relativeUrl) => relativeUrl
   ? baseUrl.replace(/\/+$/, '') + '/' + relativeUrl.replace(/^\/+/, '')
   : baseUrl
 
 async function fetchTextAndParser (url) {
-  const responseText = await fetch(url).then((res) => res.text())
+  const res = await fetch(url)
+  if (!res.ok) {
+    await sleep(Math.floor(5000 * Math.random()))
+    return fetchTextAndParser(url)
+  }
+  const responseText = await res.text()
   const $ = cheerio.load(responseText)
 
   return { text: responseText, $ }
@@ -27,14 +34,38 @@ async function getLegislatorListUrl () {
 
 async function getLegislatorUrls (url) {
   const { $ } = await fetchTextAndParser(url)
-  return $(legislatorSelectorAtList).map((_, el) => $(el).parents('a').attr('href')).toArray().map((el) => combineURLs(baseUrl, el))
+  const contents = new Map()
+  const result = $(legislatorSelectorAtList)
+    .map((_, el) => {
+      const cDom = $(el).parents('a').parents('.content').html()
+      contents.set(cDom, (contents.get(cDom) ?? 0) + 1)
+      return $(el).parents('a')
+    })
+    .toArray()
+  const selectedContent = [...contents.entries()].find((c) => c[1] === Math.max(...contents.values()))[0]
+  return result
+    .filter((el) => $(el).parents('.content').html() === selectedContent)
+    .map((el) => combineURLs(baseUrl, $(el).attr('href')))
 }
 
 async function fetchAndParseLegislator (url) {
   const { $ } = await fetchTextAndParser(url)
   const name = $('.legislatorname').text().trim()
   const image = combineURLs(baseUrl, $('img[src^="/Images/Legislators/"]').attr('src'))
-  const info = $('.info-left').children().children('li').map((i, el) => $(el).text().trim()).toArray().map((el) => el.split('：')).reduce((sum, el) => ({ ...sum, [el[0]]: el.slice(1).join('：') }), {})
+  const info = $('.info-left').children().children('li')
+    .toArray()
+    .map((el) => {
+      const texts = $(el).text().trim().split('：')
+      if ($(el).children('ul').length) {
+        return [
+          texts[0],
+          $(el).children('ul').children('li').toArray().map((l) => $(l).text())
+        ]
+      } else {
+        return texts
+      }
+    })
+    .reduce((sum, el) => ({ ...sum, [el[0]]: (el.length === 2 && Array.isArray(el[1])) ? el[1] : el.slice(1).join('：') }), {})
 
   let key = ''
   const histories = $('.info-right')
@@ -51,6 +82,8 @@ async function fetchAndParseLegislator (url) {
     .toArray()
     .filter((el) => el)
     .reduce((sum, el) => ({ ...sum, ...el }), {})
+
+  console.log(`Finished ${name}...`)
 
   return {
     name,
@@ -71,7 +104,7 @@ async function main () {
   console.log(`Discovery ${urls.length} legislators`)
 
   console.time('Get and parse legislators')
-  const legislators = await Promise.map(urls, (el) => fetchAndParseLegislator(el), { concurrency: 8 })
+  const legislators = await Promise.map(urls, (el) => fetchAndParseLegislator(el), { concurrency: 3 })
   console.timeEnd('Get and parse legislators')
   fs.writeFileSync('./data/legislators.json', JSON.stringify(legislators, null, 2))
 }
